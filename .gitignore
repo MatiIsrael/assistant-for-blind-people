@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+db.sqlite3
+db.sqlite3-journal
+
+# Audio Cache
+tts_cache/
+
+# Secrets and Credentials
+.env
+firebase_credentials.json
+serviceAccountKey.json
+firebase-adminsdk*.json
+*.pem
+
+# Staticfiles collected
+staticfiles/
+
+# IDE & OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

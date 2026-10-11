@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <title>Voice Vision Navigation - Ethiopia Accessibility</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- TensorFlow.js & COCO-SSD for instant client-side obstacle detection -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+</head>
+<body role="application" aria-label="Voice Navigation Assistant for the Blind">
+
+    <!-- Screen-Reader & Audio Status Live Region -->
+    <div id="srAnnouncement" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- MAIN INTERACTIVE CONTAINER (TAP ANYWHERE TO ACTIVATE) -->
+    <div id="appContainer" class="app-container state-init" tabindex="0" role="button" aria-label="Screen touch area. Tap anywhere to activate voice or speak.">
+        
+        <!-- TOP STATUS HEADER -->
+        <header class="app-header">
+            <div class="header-left">
+                <span class="brand-pill">👁️ VISION NAV</span>
+                <span id="langBadge" class="lang-badge">LANG: --</span>
+            </div>
+            <div class="header-right">
+                <span id="connectionBadge" class="conn-badge" title="AI & Cloud Status">
+                    {% if gemini_configured %}
+                    <span class="indicator green"></span> Gemini AI Active
+                    {% else %}
+                    <span class="indicator yellow"></span> Local AI Ready
+                    {% endif %}
+                </span>
+                <button id="btnSettings" class="icon-btn" aria-label="Settings and API Configuration">⚙️</button>
+            </div>
+        </header>
+
+        <!-- CRITICAL HAZARD ALERT BANNER -->
+        <div id="hazardBanner" class="hazard-banner hidden" role="alert">
+            <span class="hazard-icon">⚠️</span>
+            <div class="hazard-text">
+                <strong id="hazardTitle">WARNING!</strong>
+                <span id="hazardDesc">Obstacle detected ahead</span>
+            </div>
+        </div>
+
+        <!-- CAMERA VIEWPORT & OBJECT OVERLAY -->
+        <div class="viewport-card">
+            <div id="cameraPlaceholder" class="camera-placeholder">
+                <div class="placeholder-icon">📷</div>
+                <p id="cameraPlaceholderText">Camera will open automatically once destination is set</p>
+            </div>
+            <video id="cameraVideo" class="camera-video hidden" autoplay playsinline muted></video>
+            <canvas id="detectionCanvas" class="detection-canvas hidden"></canvas>
+            
+            <!-- Walking metrics HUD (Meters Walked & Left) -->
+            <div id="walkingHud" class="walking-hud hidden">
+                <div class="hud-box">
+                    <span class="hud-label">WALKED</span>
+                    <span id="hudWalked" class="hud-val">0 m</span>
+                </div>
+                <div class="hud-box highlight">
+                    <span class="hud-label">REMAINING</span>
+                    <span id="hudRemaining" class="hud-val">100 m</span>
+                </div>
+                <div class="hud-box">
+                    <span class="hud-label">DESTINATION</span>
+                    <span id="hudDestination" class="hud-val text-truncate">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- LIVE VOICE INTERACTION CAROUSEL / STATUS -->
+        <section class="voice-status-section">
+            <div id="voicePill" class="voice-pill pulse">
+                <span class="voice-wave"></span>
+                <span id="voiceStatusText">TAP SCREEN TO START</span>
+            </div>
+
+            <!-- Spoken Message Transcript -->
+            <div class="transcript-box">
+                <p id="appSpeechText" class="app-speech">
+                    "Tap anywhere on the screen to begin. You can speak English, Amharic, or Afaan Oromoo."
+                </p>
+                <p id="userHeardText" class="user-heard hidden">
+                    User said: <span id="userSpokenWords"></span>
+                </p>
+            <!-- Quick Assistive Language & Destination Pills (Clickable or Voice) -->
+            <div id="quickSelectRow" class="quick-select-row">
+                <button type="button" class="quick-pill" data-lang="om">Afaan Oromoo</button>
+                <button type="button" class="quick-pill" data-lang="am">አማርኛ (Amharic)</button>
+                <button type="button" class="quick-pill" data-lang="en">English</button>
+            </div>
+        </section>
+
+        <!-- ACCESSIBLE TACTILE CONTROLS (BOTTOM) -->
+        <footer class="app-controls">
+            <button id="btnTapToTalk" class="primary-talk-btn" aria-label="Tap to talk or activate microphone">
+                <span class="btn-icon">🎙️</span>
+                <span id="btnTalkLabel" class="btn-label">TAP TO TALK</span>
+            </button>
+
+            <div class="secondary-btn-row">
+                <button id="btnRepeat" class="ctrl-btn" aria-label="Repeat last instruction" title="Repeat">
+                    🔄 REPEAT
+                </button>
+                <button id="btnSimulateStep" class="ctrl-btn" aria-label="Step forward 5 meters" title="Simulate walking 5m">
+                    🚶 WALK +5m
+                </button>
+                <button id="btnReset" class="ctrl-btn danger" aria-label="New destination" title="Reset">
+                    ⏹️ RESET
+                </button>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- SETTINGS & CONFIGURATION MODAL -->
+    <div id="settingsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="modalTitle">⚙️ App Settings & API Keys</h2>
+                <button id="btnCloseModal" class="close-btn" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">
+                    The app works out of the box with offline AI detection. You can also plug in your Google Gemini API key and Firebase credentials for enhanced cloud vision & trip history.
+                </p>
+
+                <div class="form-group">
+                    <label for="geminiApiKeyInput">Gemini API Key (Optional):</label>
+                    <input type="password" id="geminiApiKeyInput" placeholder="Paste AIzaSy... or leave blank for local AI">
+                    <small>Get a key at Google AI Studio. Stored securely in your session.</small>
+                </div>
+
+                <div class="status-summary">
+                    <div class="status-item">
+                        <span>Gemini Multimodal Vision:</span>
+                        <strong id="modalGeminiStatus">{% if gemini_configured %}Active (Server Env){% else %}Local Detection Mode{% endif %}</strong>
+                    </div>
+                    <div class="status-item">
+                        <span>Firebase Cloud Database:</span>
+                        <strong id="modalFirebaseStatus">{% if firebase_connected %}Connected{% else %}Local SQLite (Drop firebase_credentials.json){% endif %}</strong>
+                    </div>
+                    <div class="status-item">
+                        <span>Supported Languages:</span>
+                        <strong>Afaan Oromoo, አማርኛ, English</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSaveSettings" class="btn-primary">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
