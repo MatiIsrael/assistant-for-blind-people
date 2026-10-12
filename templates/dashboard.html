@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#060810">
+    <title>VisionNav - Caregiver & Telemetry Analytics Dashboard</title>
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="dashboard-body">
+
+    <!-- TOP DASHBOARD NAVIGATION -->
+    <header class="dash-header">
+        <div class="dash-brand">
+            <span class="pulse-indicator live"></span>
+            <div class="brand-text">
+                <h1>👁️ VISION NAV <span>TELEMETRY & CAREGIVER HUB</span></h1>
+                <p>Real-Time Remote Safety Monitoring & Hazard Telemetry</p>
+            </div>
+        </div>
+        
+        <div class="dash-nav-actions">
+            <a href="/" class="btn-nav-assistant" title="Switch to Blind User Voice Navigator">
+                🎙️ VOICE ASSISTANT (LIVE NAV)
+            </a>
+            <div id="liveSyncBadge" class="sync-badge">
+                <span class="sync-dot"></span> LIVE SYNC ACTIVE
+            </div>
+            <button id="btnRefreshData" class="btn-icon" title="Refresh Telemetry">🔄</button>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="dash-container">
+
+        <!-- TOP KPI METRICS BAR -->
+        <section class="kpi-grid">
+            <div class="kpi-card cyan">
+                <div class="kpi-icon">🚶</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">TOTAL DISTANCE WALKED</span>
+                    <strong id="kpiWalked" class="kpi-value">{{ active_session.meters_walked|default:"0" }} m</strong>
+                    <span class="kpi-sub" id="kpiTotalAll">All-Time: {{ total_sessions }} journeys</span>
+                </div>
+            </div>
+
+            <div class="kpi-card yellow">
+                <div class="kpi-icon">🎯</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">ACTIVE DESTINATION</span>
+                    <strong id="kpiDestination" class="kpi-value">{{ active_session.destination|default:"Standing By" }}</strong>
+                    <span class="kpi-sub" id="kpiRemaining">Remaining: {{ active_session.distance_remaining|default:"0" }} m</span>
+                </div>
+            </div>
+
+            <div class="kpi-card red">
+                <div class="kpi-icon">⚠️</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">HAZARDS PREVENTED</span>
+                    <strong id="kpiHazards" class="kpi-value">{{ total_hazards|default:"0" }}</strong>
+                    <span class="kpi-sub" id="kpiSessionHazards">This Trip: {{ active_session.hazards_encountered|default:"0" }}</span>
+                </div>
+            </div>
+
+            <div class="kpi-card green">
+                <div class="kpi-icon">🔋</div>
+                <div class="kpi-info">
+                    <span class="kpi-label">USER TELEMETRY</span>
+                    <strong id="kpiTelemetry" class="kpi-value">95% • 1.2 m/s</strong>
+                    <span class="kpi-sub" id="kpiStatus">Status: <span class="badge-status {{ active_session.status|default:'idle' }}">{{ active_session.status|default:"idle"|upper }}</span></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN DUAL-COLUMN MONITOR -->
+        <div class="dash-split-layout">
+            
+            <!-- LEFT: LIVE LEAFLET GPS MAP & GPS TELEMETRY HUD -->
+            <section class="map-monitor-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>🗺️ LIVE GPS ROUTE & PEDESTRIAN TRACKER</span>
+                        <small id="mapCoordinatesLabel">Addis Ababa, Ethiopia (GPS High-Precision)</small>
+                    </div>
+                    <div class="map-controls">
+                        <button id="btnRecenterMap" class="btn-chip" title="Center on User">🎯 RECENTER</button>
+                        <button id="btnSimulateStepDash" class="btn-chip cyan" title="Simulate Walking 10m">🚶 STEP +10m</button>
+                    </div>
+                </div>
+
+                <!-- LEAFLET MAP CONTAINER -->
+                <div id="liveMap" class="leaflet-map-box"></div>
+
+                <!-- FLOATING GPS TELEMETRY HUD -->
+                <div class="gps-telemetry-hud">
+                    <div class="hud-item">
+                        <span class="hud-k">LATITUDE</span>
+                        <strong id="hudLat" class="hud-v">9.0108° N</strong>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-k">LONGITUDE</span>
+                        <strong id="hudLng" class="hud-v">38.7613° E</strong>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-k">WALKING SPEED</span>
+                        <strong id="hudSpeed" class="hud-v">1.2 m/s</strong>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-k">COMPASS HEADING</span>
+                        <strong id="hudHeading" class="hud-v">045° (NE)</strong>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-k">GPS ACCURACY</span>
+                        <strong id="hudAccuracy" class="hud-v">± 2.5 m</strong>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: 2D SONAR RADAR & CAREGIVER REMOTE ACTIONS -->
+            <section class="side-control-panel">
+
+                <!-- 2D SONAR RADAR SCANNER MIRROR -->
+                <div class="card-box radar-box">
+                    <div class="box-header">
+                        <h3>📡 2D SONAR OBSTACLE SCANNER</h3>
+                        <span id="dashRadarLabel" class="tech-tag">LIVE FEED</span>
+                    </div>
+                    <div class="radar-canvas-center">
+                        <canvas id="dashRadarCanvas" width="240" height="240"></canvas>
+                    </div>
+                    <div class="radar-legend">
+                        <span><span class="dot safe"></span> Clear Path</span>
+                        <span><span class="dot warn"></span> Caution (&lt;5m)</span>
+                        <span><span class="dot danger"></span> Danger (&lt;2m)</span>
+                    </div>
+                </div>
+
+                <!-- LIVE VOICE DIALOGUE & TRANSCRIPT FEED -->
+                <div class="card-box voice-feed-box">
+                    <div class="box-header">
+                        <h3>💬 LIVE VOICE DIALOGUE</h3>
+                        <span class="tech-tag cyan">SPEECH SYNC</span>
+                    </div>
+                    <div id="dialogueFeed" class="dialogue-feed">
+                        <div class="speech-bubble assistant">
+                            <span class="bubble-sender">👁️ Assistant:</span>
+                            <p id="dashAssistantSpeech">{{ active_session.last_assistant_speech|default:"VisionNav active. Please choose your language." }}</p>
+                        </div>
+                        <div class="speech-bubble user">
+                            <span class="bubble-sender">🗣️ Blind User:</span>
+                            <p id="dashUserSpeech">{{ active_session.last_user_speech|default:"(Listening for user voice...)" }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CAREGIVER REMOTE ACTIONS & EMERGENCY SOS -->
+                <div class="card-box actions-box">
+                    <div class="box-header">
+                        <h3>🛡️ CAREGIVER REMOTE ASSIST</h3>
+                        <span class="tech-tag red">URGENT DISPATCH</span>
+                    </div>
+                    
+                    <form id="caregiverVoiceForm" class="caregiver-form" onsubmit="return false;">
+                        <label for="caregiverMessageInput">Speak in Blind User's Headset:</label>
+                        <div class="input-send-row">
+                            <input type="text" id="caregiverMessageInput" placeholder="e.g. Caregiver: Wait right there, car passing" required>
+                            <button type="button" id="btnSendCaregiverVoice" class="btn-send-voice">
+                                📢 SEND VOICE
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="emergency-action-row">
+                        <button id="btnCaregiverSos" class="btn-sos-pulse" title="Trigger high-priority audio SOS warning">
+                            🚨 BROADCAST EMERGENCY SOS
+                        </button>
+                    </div>
+                    <div id="caregiverAlertFeedback" class="alert-feedback hidden"></div>
+                </div>
+
+            </section>
+        </div>
+
+        <!-- RECENT NAVIGATION SESSIONS & HAZARD LOGS -->
+        <section class="tables-section">
+            <div class="table-card">
+                <div class="table-header">
+                    <h2>📋 Recent Navigation Journeys</h2>
+                    <span class="table-count">Last {{ recent_sessions|length }} Sessions</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
+                                <th>Trip ID</th>
+                                <th>Destination</th>
+                                <th>Language</th>
+                                <th>Walked / Target</th>
+                                <th>Hazards</th>
+                                <th>Status</th>
+                                <th>Started</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsTableBody">
+                            {% for s in recent_sessions %}
+                            <tr>
+                                <td><code>{{ s.session_id }}</code></td>
+                                <td><strong>{{ s.destination }}</strong></td>
+                                <td><span class="lang-pill">{{ s.language|upper }}</span></td>
+                                <td>{{ s.meters_walked }}m / {{ s.target_distance }}m</td>
+                                <td><span class="hazard-count">{{ s.hazards_encountered }}</span></td>
+                                <td><span class="badge-status {{ s.status }}">{{ s.status|upper }}</span></td>
+                                <td>{{ s.created_at|date:"M d, H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">No trips recorded yet. Start walking on the Voice Navigator!</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RECENT HAZARD INCIDENTS -->
+            <div class="table-card">
+                <div class="table-header">
+                    <h2>⚠️ Hazard Activity Log</h2>
+                    <span class="table-count">{{ recent_hazards|length }} Detected</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
+                                <th>Hazard Type</th>
+                                <th>Proximity</th>
+                                <th>Direction</th>
+                                <th>Coordinates</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hazardsTableBody">
+                            {% for h in recent_hazards %}
+                            <tr>
+                                <td><strong class="text-warning">⚠️ {{ h.hazard_type }}</strong></td>
+                                <td>{{ h.distance_meters }} m</td>
+                                <td><span class="dir-tag">{{ h.direction|upper }}</span></td>
+                                <td><code>{{ h.lat|floatformat:4 }}, {{ h.lng|floatformat:4 }}</code></td>
+                                <td>{{ h.created_at|date:"H:i:s" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No hazards detected so far. Safe navigation!</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

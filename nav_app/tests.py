@@ -122,3 +122,66 @@ class VoiceNavigationTests(TestCase):
         data = response.json()
         self.assertIn('spoken_message', data)
         self.assertIn('መንገዱ ክፍት ነው', data['spoken_message'])
+
+    def test_dashboard_renders(self):
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'CAREGIVER')
+        self.assertContains(response, 'liveMap')
+        self.assertContains(response, 'dashRadarCanvas')
+
+    def test_dashboard_data_api(self):
+        NavigationSession.objects.create(
+            session_id='dash_test_001',
+            language='en',
+            destination='Piassa',
+            meters_walked=20,
+            distance_remaining=80,
+            target_distance=100,
+            status='active'
+        )
+        response = self.client.get(reverse('api_dashboard_data'))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('active_session', data)
+        self.assertEqual(data['active_session']['session_id'], 'dash_test_001')
+        self.assertIn('stats', data)
+        self.assertGreaterEqual(data['stats']['total_sessions'], 1)
+
+    def test_caregiver_action_and_alert_delivery(self):
+        session = NavigationSession.objects.create(
+            session_id='alert_test_001',
+            language='en',
+            destination='Sheraton',
+            status='active'
+        )
+
+        # 1. Send caregiver message
+        resp = self.client.post(
+            reverse('api_caregiver_action'),
+            data=json.dumps({
+                'session_id': 'alert_test_001',
+                'action': 'message',
+                'message': 'Caregiver: Stop right now, road is closed'
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        # 2. Update trip should deliver pending alert to blind user's device
+        update_resp = self.client.post(
+            reverse('api_update_trip'),
+            data=json.dumps({
+                'session_id': 'alert_test_001',
+                'meters_walked': 10,
+                'distance_left': 90,
+                'arrived': False
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(update_resp.status_code, 200)
+        update_data = update_resp.json()
+        self.assertIn('pending_alerts', update_data)
+        self.assertEqual(len(update_data['pending_alerts']), 1)
+        self.assertIn('Stop right now', update_data['pending_alerts'][0]['message'])
+

@@ -1,36 +1,48 @@
 # 👁️ VisionNav - Voice-First Navigation Assistant for the Blind
 
-An eyes-free, voice-controlled assistive web application tailored for blind pedestrians in Ethiopia.
+An eyes-free, voice-controlled assistive web application tailored for blind pedestrians in Ethiopia, featuring high-contrast cyberpunk 2D graphics and a real-time Caregiver & Telemetry Analytics Dashboard.
 
-The user talks directly to the application and listens to its voice replies — **no typing or reading required**.
+The blind user talks directly to the application and listens to its voice replies — **hands-free, no typing, touching, or reading required**.
 
 ---
 
 ## 🌟 Features
 
-### 1. 🗣️ Trilingual Voice Interaction
+### 1. 🗣️ 100% Hands-Free Trilingual Voice Interaction
 - **Afaan Oromoo**, **Amharic (አማርኛ)**, and **English**.
-- Upon opening, the app greets the user and asks by voice in all 3 languages to select their preferred language.
-- Once selected, all subsequent interaction, alerts, and navigation guidance continue seamlessly in that language.
+- **Zero-Touch Auto-Start**: Welcomes the user immediately with voice upon launch without asking to touch or click the screen.
+- **Continuous Listening Loop**: Automatically listens for responses and voice commands ("Stop", "Where am I?", "Status", "Repeat").
+- **Caregiver Headset Audio**: Remote caregiver voice instructions and emergency SOS broadcasts speak directly into the user's headphones.
 
-### 2. 📍 Voice Destination Setting
-- Asks the user where they want to go (e.g. hotel, church, shop, market, hospital, or any custom location).
-- Understands natural spoken destinations in Afaan Oromoo, Amharic, or English (powered by Gemini NLP or local rule extractor).
-- Confirms the destination and prepares the walking route.
+### 2. 📍 Voice Destination Setting & GPS Tracking
+- Spoken destination recognition in Afaan Oromoo, Amharic, and English (Gemini NLP or local extractor).
+- **High-Precision GPS**: Tracks live pedestrian coordinates with realistic Addis Ababa fallback simulation for testing.
+- Calculates walking distances and prepares optimal pedestrian routes.
 
-### 3. 📷 Camera Road Navigation & Obstacle Guidance
-- Activates the phone's camera (rear environment lens).
-- **Real-Time Obstacle Detection**: Detects people, vehicles, carts, bikes, and obstacles directly on device using TensorFlow.js COCO-SSD with instant audio warnings (e.g., *"Warning! Person ahead, 2 meters! Stop or step aside."* / *"መኪና በቀኝ በኩል አለ"* / *"Namni fuuldura keessan jira"*).
-- **Gemini Multimodal Vision**: Inspects camera snapshots for surface hazards like holes, open ditches, potholes, and stairs.
-- **Walking Progress**: Automatically measures and speaks how many meters have been walked and how many meters remain to the destination.
-- **Arrival Announcement**: Announces arrival with sound and vibration when the destination is reached.
+### 3. 🎨 Cyberpunk 2D UI Graphics Cockpit
+- **2D Sonar Obstacle Radar Canvas**: 360° sweeping radar beam with 1m, 2m, and 5m range rings, danger cones, and real-time obstacle blips.
+- **2D Cybernetic Compass & Spatial Bearing**: Circular digital heading gyro displaying current direction and destination vector.
+- **2D Dynamic Sinusoidal Audio Waveform**: Smooth animated oscillating neon waveform reacting to speech output and microphone input.
+- **2D Walking Runway Progress Bar**: Perspective runway showing walked distance, walking pedestrian avatar, and destination milestone beacons.
+
+### 4. 📊 Caregiver & Telemetry Analytics Dashboard (`/dashboard/`)
+- **Live Leaflet & OpenStreetMap**: Interactive dark-themed map tracking the blind user's live position, route polyline, and hazard alert markers.
+- **Real-Time Telemetry HUD**: Walking speed (m/s), compass bearing, distance walked/remaining, battery level, and GPS accuracy.
+- **2D Radar Mirror**: Caregivers can monitor camera obstacle scans in real time.
+- **Caregiver Remote Dispatch**: Send custom voice instructions directly to the blind user's earphones or trigger an Emergency SOS alarm.
+- **Historical Logs**: Tables tracking trip journeys, completed arrivals, and hazard encounter logs.
+
+### 5. 📷 Camera Road Navigation & Obstacle Guidance
+- **TensorFlow.js COCO-SSD**: Real-time on-device obstacle warnings (*"Warning! Person ahead, 2 meters! Stop or step aside."* / *"መኪና በቀኝ በኩል አለ"* / *"Namni fuuldura keessan jira"*).
+- **Gemini Multimodal Vision**: Surface hazard inspection (potholes, ditches, open trenches, stairs).
+- **Arrival Announcement**: Celebratory voice fanfare and tactile vibration when destination is reached.
 
 ---
 
 ## 🛠️ Tech Stack
-- **Frontend**: HTML5, CSS3 (high-contrast accessibility theme), JavaScript (Web Speech API, Web Audio API, Canvas, TensorFlow.js).
+- **Frontend**: HTML5, CSS3 (Cyberpunk High-Contrast Accessibility Theme), JavaScript (Web Speech API, Web Audio API, HTML5 Canvas 2D, Leaflet.js, TensorFlow.js).
 - **Backend**: Python 3.14 + Django 6.0.
-- **Database**: Firebase Firestore (`firebase-admin`) + local SQLite fallback.
+- **Database**: SQLite with `NavigationSession`, `HazardLog`, and `CaregiverAlert` models + Firebase Firestore sync.
 - **AI / Vision**: Google Gemini API (`google-genai`).
 
 ---
@@ -43,14 +55,15 @@ The user talks directly to the application and listens to its voice replies — 
    ```
 
 2. **Open in Browser**:
-   - On PC: Open `http://localhost:8000`
-   - On Phone: Connect phone to the same Wi-Fi and open `http://<YOUR_COMPUTER_IP>:8000`
+   - **Voice Navigator (Blind User View)**: `http://localhost:8000/`
+   - **Caregiver & Telemetry Dashboard**: `http://localhost:8000/dashboard/`
+   - **On Mobile Phone**: Connect to the same Wi-Fi and open `http://<YOUR_COMPUTER_IP>:8000`
 
 3. **How to Use**:
-   - Tap anywhere on the screen to begin.
-   - Speak your preferred language (**English**, **Amharic**, or **Afaan Oromoo**).
+   - Just open the app — the voice assistant starts speaking hands-free!
+   - Say your preferred language (**English**, **Amharic**, or **Afaan Oromoo**).
    - Say where you want to go (e.g. *"St. George Church"*, *"Bole Hotel"*, *"ገበያ"*, *"suuqii"*).
-   - Hold the phone facing forward — the app guides your steps until you arrive!
+   - Point your phone forward — the app guides your steps until you arrive safely!
 
 ---
 

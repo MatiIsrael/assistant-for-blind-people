@@ -75,13 +75,20 @@ WSGI_APPLICATION = 'vision_nav.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 import os
+import tempfile
+
+if os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+    db_path = Path(tempfile.gettempdir()) / 'db.sqlite3'
+else:
+    db_path = BASE_DIR / 'db.sqlite3'
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/tmp/db.sqlite3' if os.environ.get('VERCEL') else BASE_DIR / 'db.sqlite3',
+        'NAME': db_path,
     }
 }
+
 
 
 # Password validation
@@ -122,3 +129,14 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_MANIFEST_STRICT = False
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.vercel.app',
+    'https://*.onrender.com',
+    'https://*.railway.app',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
