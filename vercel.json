@@ -3,7 +3,17 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "templates/**",
+          "static/**",
+          "staticfiles/**",
+          "seed_db.sqlite3",
+          "nav_app/**",
+          "vision_nav/**"
+        ]
+      }
     }
   ],
   "routes": [
