@@ -1,11 +1,20 @@
 import os
 import hashlib
 import urllib.parse
+import tempfile
 from pathlib import Path
 import requests
 
-CACHE_DIR = Path(__file__).resolve().parent.parent / "tts_cache"
-CACHE_DIR.mkdir(exist_ok=True)
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    CACHE_DIR = Path(tempfile.gettempdir()) / "tts_cache"
+else:
+    CACHE_DIR = Path(__file__).resolve().parent.parent / "tts_cache"
+
+try:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
+
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
